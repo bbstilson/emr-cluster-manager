@@ -1,3 +1,5 @@
+package org.bbstilson
+
 import software.amazon.awssdk.services.emr.EmrClient
 import software.amazon.awssdk.services.emr.model.{
   Application,
@@ -27,15 +29,15 @@ class ClusterManager(
   numWorkers: Int,
   s3Prefix: String,
   bootstrap: Option[String],
-  jarPaths: List[String]
+  jobs: List[(String, String)]
 ) extends LazyLogging {
 
   import ClusterManager._
 
   private[this] val client = EmrClient.create()
 
-  private[this] val steps: List[StepConfig] = jarPaths.zipWithIndex.map {
-    case (jarPath, index) =>
+  private[this] val steps: List[StepConfig] = jobs.zipWithIndex.map {
+    case ((mainClass, jarPath), index) =>
       val hadoopJarStep = HadoopJarStepConfig
         .builder()
         .jar("command-runner.jar")
@@ -47,21 +49,19 @@ class ClusterManager(
             "--driver-memory",
             "10G",
             "--class",
-            "org.allenai.training_data.Main",
+            mainClass,
             s"s3://$s3Prefix/$jarPath",
-            "--clickDataPath",
-            "s3://ai2-s2-brandons/s2_search_service/training_data/historical_serp_click_events*",
-            "--showDataPath",
-            "s3://ai2-s2-brandons/s2_search_service/training_data/historical_serp_show_events*",
+            "--ricoDataPath",
+            "s3://ai2-s2-brandons/s2_search_service/training_data/rico_serp_events*",
             "--outputLocation",
-            "s3://ai2-s2-brandons/s2_search_service/training_data/historical_serp_spark_output/"
+            "s3://ai2-s2-brandons/s2_search_service/training_data/spark_output/rico/"
           ).asJava
         )
         .build()
 
       StepConfig
         .builder()
-        .name(s"Spark Script Step $index")
+        .name(s"Step ${index + 1}")
         .actionOnFailure(TERMINATE_CLUSTER)
         .hadoopJarStep(hadoopJarStep)
         .build()
@@ -162,16 +162,19 @@ class ClusterManager(
 }
 
 object ClusterManager {
+  val CLUSTER_RELEASE = "emr-6.0.0"
+
   val TERMINATE_CLUSTER = "TERMINATE_CLUSTER"
   val ON_DEMAND = "ON_DEMAND"
   val MASTER = "MASTER"
   val SPOT = "SPOT"
   val CORE = "CORE"
+
   val MASTER_NODES = "Master Nodes"
   val WORKER_NODES = "Worker Nodes"
+
   val JOB_FLOW_ROLE = "EMR_EC2_DefaultRole"
   val SERVICE_ROLE = "EMR_DefaultRole"
-  val CLUSTER_RELEASE = "emr-6.0.0"
 
   object Instances {
     val DEFAULT_SG = "sg-bb7c52de"

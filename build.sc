@@ -1,7 +1,9 @@
 import mill._, scalalib._
 
-object car_scala extends ScalaModule {
+object emr_cluster_manager extends ScalaModule {
   def scalaVersion = "2.12.10"
+
+  def mainClass = Some("org.bbstilson.SpawnCluster")
 
   lazy val AwsSdkVersion = "2.10.84"
 
@@ -15,4 +17,3 @@ object car_scala extends ScalaModule {
     ivy"ch.qos.logback.contrib:logback-json-classic:0.1.5"
   )
 }
-

@@ -10,11 +10,11 @@ Build tool is [mill](http://www.lihaoyi.com/mill/).
 2) Run the main class:
 
 ```bash
-mill emr_cluster_manager.runMain \
-  --mainClass Main \
-  --clusterName "My Cluster Name" \
+mill emr_cluster_manager.run \
+  --clusterName "S2 Search Service - Rico Training Data" \
   --numWorkers 1 \
-  --prefix ai2-s2-brandons/s2_search_service/training_data \
+  --prefix "ai2-s2-brandons/s2_search_service/training_data" \
+  --mainClasses "org.allenai.rico_data.ExportRicoData" \
   --jarPaths jars/out.jar
 ```
 

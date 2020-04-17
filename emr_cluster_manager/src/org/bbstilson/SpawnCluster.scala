@@ -1,11 +1,14 @@
+package org.bbstilson
+
 import scopt.OptionParser
 import collection.JavaConverters._
 
-object Main {
+object SpawnCluster {
 
   case class Args(
     clusterName: String = "",
     prefix: String = "",
+    mainClasses: List[String] = Nil,
     jarPaths: List[String] = Nil,
     numWorkers: Int = 1,
     masterInstanceType: String = "m5.2xlarge",
@@ -24,6 +27,11 @@ object Main {
         .required()
         .valueName("some-bucket/path/to/files")
         .action((path, c) => c.copy(prefix = path))
+
+      opt[Seq[String]]("mainClasses")
+        .required()
+        .valueName("some.path.to.SomeClass,some.path.to.AnotherClass")
+        .action((classes, c) => c.copy(mainClasses = classes.toList))
 
       opt[Seq[String]]("jarPaths")
         .required()
@@ -54,6 +62,10 @@ object Main {
   }
 
   def run(args: Args): Unit = {
+    require(
+      args.jarPaths.size == args.mainClasses.size,
+      "There must be as many mainclasses as there are jars."
+    )
     val cm = new ClusterManager(
       args.clusterName,
       args.masterInstanceType,
@@ -61,7 +73,7 @@ object Main {
       args.numWorkers,
       args.prefix,
       args.bootstrap,
-      args.jarPaths
+      args.mainClasses.zip(args.jarPaths)
     )
 
     cm.runAndWait()
