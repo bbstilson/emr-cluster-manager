@@ -6,22 +6,12 @@ Build tool is [mill](http://www.lihaoyi.com/mill/).
 
 ## Usage
 
-1) bundle your jar and put it on s3.
-2) Run the main class:
+1) Bundle your jar and put it on S3.
+2) Create a config file. (e.g., `export_data.conf`)
+3) Run the cluster manager with the resource path to your config:
 
 ```bash
-mill emr_cluster_manager.run \
-  --clusterName "S2 Search Service - Rico Training Data" \
-  --numWorkers 1 \
-  --prefix "ai2-s2-brandons/s2_search_service/training_data" \
-  --mainClasses "org.allenai.rico_data.ExportRicoData" \
-  --jarPaths jars/out.jar
+mill emr_cluster_manager.run --configPath export_data.conf
 ```
 
-## Todo
-
-So much jank.
-
-1) Need to be able to pass mainclass args.
-2) Need a better solution to hardcoding s3 paths.
-3) Probably typesafe config with pureconfig.
+Grab a coffee or tea. ☕️

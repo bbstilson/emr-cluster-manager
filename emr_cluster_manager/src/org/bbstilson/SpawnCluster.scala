@@ -1,81 +1,52 @@
 package org.bbstilson
 
+import pureconfig._
+import pureconfig.error._
+import pureconfig.generic.auto._
 import scopt.OptionParser
-import collection.JavaConverters._
 
 object SpawnCluster {
 
-  case class Args(
-    clusterName: String = "",
-    prefix: String = "",
-    mainClasses: List[String] = Nil,
-    jarPaths: List[String] = Nil,
-    numWorkers: Int = 1,
-    masterInstanceType: String = "m5.2xlarge",
-    workerInstanceType: String = "r5.2xlarge",
-    bootstrap: Option[String] = None
-  )
+  case class Args(configPath: String = "")
 
   def main(args: Array[String]): Unit = {
     val argParser = new OptionParser[Args](getClass.getSimpleName) {
-      opt[String]("clusterName")
+      opt[String]("configPath")
         .required()
-        .text("Name of the cluster in EMR.")
-        .action((name, c) => c.copy(clusterName = name))
-
-      opt[String]("prefix")
-        .required()
-        .valueName("some-bucket/path/to/files")
-        .action((path, c) => c.copy(prefix = path))
-
-      opt[Seq[String]]("mainClasses")
-        .required()
-        .valueName("some.path.to.SomeClass,some.path.to.AnotherClass")
-        .action((classes, c) => c.copy(mainClasses = classes.toList))
-
-      opt[Seq[String]]("jarPaths")
-        .required()
-        .valueName("step1.jar,step2.jar,...")
-        .action((jarPaths, c) => c.copy(jarPaths = jarPaths.toList))
-        .text("jars to execute from s3. File names are prefixed with `prefix`.")
-
-      opt[String]("bootstrap")
-        .text("path to bootstrap script. Will be prefixed with `prefix`")
-        .action((path, c) => c.copy(bootstrap = Some(path)))
-
-      opt[String]("masterInstanceType")
-        .text("Master node EC2 type.")
-        .action((t, c) => c.copy(masterInstanceType = t))
-
-      opt[String]("workerInstanceType")
-        .text("Worker node EC2 type.")
-        .action((t, c) => c.copy(workerInstanceType = t))
-
-      opt[Int]("numWorkers")
-        .text("How many workers to run.")
-        .action((num, c) => c.copy(numWorkers = num))
+        .text("Path to the EMR configuration.")
+        .action((cp, c) => c.copy(configPath = cp))
     }
 
     argParser
       .parse(args, Args())
-      .foreach(run)
+      .map(_.configPath)
+      .map(loadConfig)
+      .map(_.flatMap { c =>
+        if (c.jarPaths.size != c.mainClasses.size || c.mainClasses.size != c.mainClassArgs.size) {
+          Left(
+            ConfigReaderFailures(
+              CannotParse(
+                "Number of main classes, jar paths, and main class args must be the same.",
+                None
+              ),
+              Nil
+            )
+          )
+        } else {
+          Right(c)
+        }
+      })
+      .foreach {
+        case Left(errors)  => errors.toList.foreach(println)
+        case Right(config) => run(config)
+      }
   }
 
-  def run(args: Args): Unit = {
-    require(
-      args.jarPaths.size == args.mainClasses.size,
-      "There must be as many mainclasses as there are jars."
-    )
-    val cm = new ClusterManager(
-      args.clusterName,
-      args.masterInstanceType,
-      args.workerInstanceType,
-      args.numWorkers,
-      args.prefix,
-      args.bootstrap,
-      args.mainClasses.zip(args.jarPaths)
-    )
+  private def loadConfig(configPath: String): Either[ConfigReaderFailures, Config] = {
+    ConfigSource.resources(configPath).load[Config]
+  }
 
-    cm.runAndWait()
+  def run(config: Config): Unit = {
+    new ClusterManager(config).runAndWait()
   }
 }

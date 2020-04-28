@@ -22,46 +22,40 @@ import collection.JavaConverters._
 import java.util.concurrent._
 import scala.concurrent.duration._
 
-class ClusterManager(
-  name: String,
-  masterInstanceType: String,
-  workerInstanceType: String,
-  numWorkers: Int,
-  s3Prefix: String,
-  bootstrap: Option[String],
-  jobs: List[(String, String)]
-) extends LazyLogging {
+class ClusterManager(config: Config) extends LazyLogging {
 
   import ClusterManager._
 
   private[this] val client = EmrClient.create()
 
+  val jobs: List[(String, List[String], String)] = {
+    config.mainClasses.zip(config.mainClassArgs.zip(config.jarPaths)).map {
+      case (mainClass, (mainClassArgs, jarPath)) => (mainClass, mainClassArgs, jarPath)
+    }
+  }
+
   private[this] val steps: List[StepConfig] = jobs.zipWithIndex.map {
-    case ((mainClass, jarPath), index) =>
+    case ((mainClass, mainClassArgs, jarPath), index) =>
+      val args = List(
+        "spark-submit",
+        "--deploy-mode",
+        "cluster",
+        "--driver-memory",
+        config.driverMemory,
+        "--class",
+        mainClass,
+        jarPath
+      ) ++ mainClassArgs
+
       val hadoopJarStep = HadoopJarStepConfig
         .builder()
         .jar("command-runner.jar")
-        .args(
-          List(
-            "spark-submit",
-            "--deploy-mode",
-            "cluster",
-            "--driver-memory",
-            "10G",
-            "--class",
-            mainClass,
-            s"s3://$s3Prefix/$jarPath",
-            "--ricoDataPath",
-            "s3://ai2-s2-brandons/s2_search_service/training_data/rico_serp_events*",
-            "--outputLocation",
-            "s3://ai2-s2-brandons/s2_search_service/training_data/spark_output/rico/"
-          ).asJava
-        )
+        .args(args.asJava)
         .build()
 
       StepConfig
         .builder()
-        .name(s"Step ${index + 1}")
+        .name(s"Step $index")
         .actionOnFailure(TERMINATE_CLUSTER)
         .hadoopJarStep(hadoopJarStep)
         .build()
@@ -72,7 +66,7 @@ class ClusterManager(
       .builder()
       .name(MASTER_NODES)
       .market(ON_DEMAND)
-      .instanceType(masterInstanceType)
+      .instanceType(config.masterInstanceType)
       .instanceRole(MASTER)
       .instanceCount(1)
       .build()
@@ -82,8 +76,8 @@ class ClusterManager(
       .name(WORKER_NODES)
       .market(SPOT)
       .instanceRole(CORE)
-      .instanceType(workerInstanceType)
-      .instanceCount(numWorkers)
+      .instanceType(config.workerInstanceType)
+      .instanceCount(config.numWorkers)
       .build()
 
     JobFlowInstancesConfig
@@ -98,33 +92,38 @@ class ClusterManager(
       .build()
   }
 
-  private[this] val bootstrapAction: Option[BootstrapActionConfig] = bootstrap.map { s3Path =>
-    val bootstrapActionConfig = ScriptBootstrapActionConfig
-      .builder()
-      .path(s3Path)
-      .build()
+  private[this] val bootstrapAction: Option[BootstrapActionConfig] = config.bootstrap
+    .map { s3Path =>
+      val bootstrapActionConfig = ScriptBootstrapActionConfig
+        .builder()
+        .path(s3Path)
+        .build()
 
-    BootstrapActionConfig
+      BootstrapActionConfig
+        .builder()
+        .name(s3Path)
+        .scriptBootstrapAction(bootstrapActionConfig)
+        .build()
+    }
+
+  private[this] val jobFlowReq = {
+    val tags = config.tags.map { tag => Tag.builder().key(tag.key).value(tag.value).build() }
+    RunJobFlowRequest
       .builder()
-      .name(s"$s3Prefix/$s3Path")
-      .scriptBootstrapAction(bootstrapActionConfig)
+      .name(config.clusterName)
+      .releaseLabel(CLUSTER_RELEASE)
+      .applications(CLUSTER_APPLICATIONS)
+      .configurations(CLUSTER_CONFIGURATIONS)
+      .logUri(config.logUri)
+      .instances(instances)
+      .steps(steps.asJava)
+      .bootstrapActions(List(bootstrapAction).flatten.asJava)
+      .visibleToAllUsers(true)
+      .jobFlowRole(JOB_FLOW_ROLE)
+      .serviceRole(SERVICE_ROLE)
+      .tags(tags.asJava)
       .build()
   }
-
-  private[this] val jobFlowReq = RunJobFlowRequest
-    .builder()
-    .name(name)
-    .releaseLabel(CLUSTER_RELEASE)
-    .applications(CLUSTER_APPLICATIONS)
-    .configurations(CLUSTER_CONFIGURATIONS)
-    .logUri("s3://ai2-s2-brandons/s2_search_service/training_data/spark_logs")
-    .instances(instances)
-    .steps(steps.asJava)
-    .bootstrapActions(List(bootstrapAction).flatten.asJava)
-    .visibleToAllUsers(true)
-    .jobFlowRole(JOB_FLOW_ROLE)
-    .serviceRole(SERVICE_ROLE)
-    .build()
 
   // Runs the job and returns the cluster id.
   def run(): String = client.runJobFlow(jobFlowReq).jobFlowId()
@@ -208,10 +207,4 @@ object ClusterManager {
   val CLUSTER_APPLICATIONS = List("Spark", "Hadoop", "Hive", "Livy").map { app =>
     Application.builder().name(app).build()
   }.asJava
-
-  val CLUSTER_TAGS = List(
-    Tag.builder().key("Project").value("S2").build(),
-    Tag.builder().key("Contact").value(System.getProperty("user.name")).build(),
-    Tag.builder().key("Application").value("CAR").build()
-  ).asJava
 }
