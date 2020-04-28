@@ -14,7 +14,6 @@ object emr_cluster_manager extends ScalaModule {
     ivy"software.amazon.awssdk:s3:$AwsSdkVersion",
     ivy"software.amazon.awssdk:emr:$AwsSdkVersion",
     ivy"com.typesafe.scala-logging::scala-logging:3.9.2",
-    ivy"ch.qos.logback.contrib:logback-jackson:0.1.5",
-    ivy"ch.qos.logback.contrib:logback-json-classic:0.1.5"
+    ivy"ch.qos.logback:logback-classic:1.2.3"
   )
 }

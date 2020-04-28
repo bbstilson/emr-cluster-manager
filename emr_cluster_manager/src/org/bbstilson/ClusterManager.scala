@@ -55,7 +55,7 @@ class ClusterManager(config: Config) extends LazyLogging {
 
       StepConfig
         .builder()
-        .name(s"Step $index")
+        .name(s"Step ${index + 1}")
         .actionOnFailure(TERMINATE_CLUSTER)
         .hadoopJarStep(hadoopJarStep)
         .build()

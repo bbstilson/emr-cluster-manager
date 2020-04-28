@@ -9,6 +9,11 @@ object SpawnCluster {
 
   case class Args(configPath: String = "")
 
+  val ARG_SIZE_FAILURE = ConfigReaderFailures(
+    CannotParse("Number of main classes, jar paths, and main class args must be the same.", None),
+    Nil
+  )
+
   def main(args: Array[String]): Unit = {
     val argParser = new OptionParser[Args](getClass.getSimpleName) {
       opt[String]("configPath")
@@ -23,15 +28,7 @@ object SpawnCluster {
       .map(loadConfig)
       .map(_.flatMap { c =>
         if (c.jarPaths.size != c.mainClasses.size || c.mainClasses.size != c.mainClassArgs.size) {
-          Left(
-            ConfigReaderFailures(
-              CannotParse(
-                "Number of main classes, jar paths, and main class args must be the same.",
-                None
-              ),
-              Nil
-            )
-          )
+          Left(ARG_SIZE_FAILURE)
         } else {
           Right(c)
         }
