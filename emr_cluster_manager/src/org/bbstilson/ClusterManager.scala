@@ -34,8 +34,8 @@ class ClusterManager(config: Config) extends LazyLogging {
     }
   }
 
-  private[this] val steps: List[StepConfig] = jobs.zipWithIndex.map {
-    case ((mainClass, mainClassArgs, jarPath), index) =>
+  private[this] val steps: List[StepConfig] = jobs.map {
+    case (mainClass, mainClassArgs, jarPath) =>
       val args = List(
         "spark-submit",
         "--deploy-mode",
@@ -55,7 +55,7 @@ class ClusterManager(config: Config) extends LazyLogging {
 
       StepConfig
         .builder()
-        .name(s"Step ${index + 1}")
+        .name(mainClass)
         .actionOnFailure(TERMINATE_CLUSTER)
         .hadoopJarStep(hadoopJarStep)
         .build()
