@@ -1,5 +1,7 @@
 package org.bbstilson
 
+import org.bbstilson.config.Config
+
 import software.amazon.awssdk.services.emr.EmrClient
 import software.amazon.awssdk.services.emr.model.{
   Application,
@@ -92,19 +94,20 @@ class ClusterManager(config: Config) extends LazyLogging {
       .build()
   }
 
-  private[this] val bootstrapAction: Option[BootstrapActionConfig] = config.bootstrap
-    .map { s3Path =>
+  private[this] val bootstrapAction: Option[BootstrapActionConfig] = config.bootstrapAction.map {
+    action =>
       val bootstrapActionConfig = ScriptBootstrapActionConfig
         .builder()
-        .path(s3Path)
+        .path(action.scriptPath)
+        .args(action.args.asJava)
         .build()
 
       BootstrapActionConfig
         .builder()
-        .name(s3Path)
+        .name(action.name)
         .scriptBootstrapAction(bootstrapActionConfig)
         .build()
-    }
+  }
 
   private[this] val jobFlowReq = {
     val tags = config.tags.map { tag => Tag.builder().key(tag.key).value(tag.value).build() }

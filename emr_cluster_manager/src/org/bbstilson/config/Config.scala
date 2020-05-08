@@ -1,6 +1,4 @@
-package org.bbstilson
-
-case class TagConfig(key: String, value: String)
+package org.bbstilson.config
 
 case class Config(
   clusterName: String,
@@ -11,9 +9,9 @@ case class Config(
   jarPaths: List[String],
   mainClasses: List[String],
   mainClassArgs: List[List[String]],
-  bootstrap: Option[String],
+  bootstrapAction: Option[BootstrapAction],
   logUri: String,
-  tags: List[TagConfig]
+  tags: List[Tag]
 ) {
 
   override def toString(): String = {
@@ -27,7 +25,7 @@ case class Config(
        |  jarPaths: $jarPaths,
        |  mainClasses: $mainClasses,
        |  mainClassArgs: $mainClassArgs,
-       |  bootstrap: $bootstrap,
+       |  bootstrapAction: $bootstrapAction,
        |  logUri: $logUri,
        |  tags: $tags
        |)

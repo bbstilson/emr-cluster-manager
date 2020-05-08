@@ -5,6 +5,18 @@ object emr_cluster_manager extends ScalaModule {
 
   def mainClass = Some("org.bbstilson.SpawnCluster")
 
+  def scalaOptions = Seq(
+    "-encoding",
+    "UTF-8",
+    "-unchecked",
+    "-deprecation",
+    "-feature",
+    "-Xfatal-warnings",
+    "-Xlint",
+    "-Ywarn-numeric-widen",
+    "-Ywarn-value-discard"
+  )
+
   lazy val AwsSdkVersion = "2.10.84"
 
   def ivyDeps = Agg(
