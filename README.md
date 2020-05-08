@@ -11,6 +11,7 @@ Build tool is [mill](http://www.lihaoyi.com/mill/).
 3) Run the cluster manager with the resource path to your config:
 
 ```bash
+export JAVA_TOOL_OPTIONS="-Xms512m -Xmx1536m -Xss2m"
 mill emr_cluster_manager.run --configPath export_data.conf
 ```
 
