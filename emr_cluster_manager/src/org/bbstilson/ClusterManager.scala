@@ -30,14 +30,7 @@ class ClusterManager(config: Config) extends LazyLogging {
 
   private[this] val client = EmrClient.create()
 
-  val jobs: List[(String, List[String], String)] = {
-    config.mainClasses.zip(config.mainClassArgs.zip(config.jarPaths)).map {
-      case (mainClass, (mainClassArgs, jarPath)) => (mainClass, mainClassArgs, jarPath)
-    }
-  }
-
-  private[this] val steps: List[StepConfig] = jobs.map {
-    case (mainClass, mainClassArgs, jarPath) =>
+  private[this] val steps: List[StepConfig] = config.steps.map { step =>
       val args = List(
         "spark-submit",
         "--deploy-mode",
@@ -45,9 +38,9 @@ class ClusterManager(config: Config) extends LazyLogging {
         "--driver-memory",
         config.driverMemory,
         "--class",
-        mainClass,
-        jarPath
-      ) ++ mainClassArgs
+        step.main,
+        step.jarPath
+      ) ++ step.args
 
       val hadoopJarStep = HadoopJarStepConfig
         .builder()
@@ -57,7 +50,7 @@ class ClusterManager(config: Config) extends LazyLogging {
 
       StepConfig
         .builder()
-        .name(mainClass)
+        .name(step.main)
         .actionOnFailure(TERMINATE_CLUSTER)
         .hadoopJarStep(hadoopJarStep)
         .build()

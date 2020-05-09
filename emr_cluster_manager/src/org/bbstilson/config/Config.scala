@@ -6,9 +6,7 @@ case class Config(
   driverMemory: String,
   workerInstanceType: String,
   numWorkers: Int,
-  jarPaths: List[String],
-  mainClasses: List[String],
-  mainClassArgs: List[List[String]],
+  steps: List[Step],
   bootstrapAction: Option[BootstrapAction],
   logUri: String,
   tags: List[Tag]
@@ -22,9 +20,7 @@ case class Config(
        |  driverMemory: $driverMemory,
        |  workerInstanceType: $workerInstanceType,
        |  numWorkers: $numWorkers,
-       |  jarPaths: $jarPaths,
-       |  mainClasses: $mainClasses,
-       |  mainClassArgs: $mainClassArgs,
+       |  steps: $steps,
        |  bootstrapAction: $bootstrapAction,
        |  logUri: $logUri,
        |  tags: $tags

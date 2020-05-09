@@ -12,11 +12,6 @@ object SpawnCluster {
 
   case class Args(configFile: String = "")
 
-  val ARG_SIZE_FAILURE = ConfigReaderFailures(
-    CannotParse("Number of main classes, jar paths, and main class args must be the same.", None),
-    Nil
-  )
-
   def main(args: Array[String]): Unit = {
     val argParser = new OptionParser[Args](getClass.getSimpleName) {
       opt[String]("configFile")
@@ -25,12 +20,18 @@ object SpawnCluster {
         .action((cp, c) => c.copy(configFile = cp))
     }
 
-    argParser.parse(args, Args()).foreach { parsed =>
-      run(ConfigSource.resources(parsed.configFile).loadOrThrow[Config])
-    }
+    argParser
+      .parse(args, Args())
+      .map(_.configFile)
+      .foreach(run)
+  }
+
+  def run(configPath: String): Unit = {
+    run(ConfigSource.resources(configPath).loadOrThrow[Config])
   }
 
   def run(config: Config): Unit = {
-    new ClusterManager(config).runAndWait()
+    println(config)
+    // new ClusterManager(config).runAndWait()
   }
 }
