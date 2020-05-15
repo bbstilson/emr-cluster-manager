@@ -13,15 +13,13 @@ import software.amazon.awssdk.services.emr.model.{
   InstanceGroupConfig,
   JobFlowInstancesConfig,
   RunJobFlowRequest,
-  RunJobFlowResponse,
   ScriptBootstrapActionConfig,
   StepConfig,
   Tag
 }
 import com.typesafe.scalalogging.LazyLogging
 
-import collection.JavaConverters._
-import java.util.concurrent._
+import scala.jdk.CollectionConverters._
 import scala.concurrent.duration._
 
 class ClusterManager(config: Config) extends LazyLogging {
@@ -31,29 +29,29 @@ class ClusterManager(config: Config) extends LazyLogging {
   private[this] val client = EmrClient.create()
 
   private[this] val steps: List[StepConfig] = config.steps.map { step =>
-      val args = List(
-        "spark-submit",
-        "--deploy-mode",
-        "cluster",
-        "--driver-memory",
-        config.driverMemory,
-        "--class",
-        step.main,
-        step.jarPath
-      ) ++ step.args
+    val args = List(
+      "spark-submit",
+      "--deploy-mode",
+      "cluster",
+      "--driver-memory",
+      config.driverMemory,
+      "--class",
+      step.main,
+      step.jarPath
+    ) ++ step.args
 
-      val hadoopJarStep = HadoopJarStepConfig
-        .builder()
-        .jar("command-runner.jar")
-        .args(args.asJava)
-        .build()
+    val hadoopJarStep = HadoopJarStepConfig
+      .builder()
+      .jar("command-runner.jar")
+      .args(args.asJava)
+      .build()
 
-      StepConfig
-        .builder()
-        .name(step.main)
-        .actionOnFailure(TERMINATE_CLUSTER)
-        .hadoopJarStep(hadoopJarStep)
-        .build()
+    StepConfig
+      .builder()
+      .name(step.main)
+      .actionOnFailure(TERMINATE_CLUSTER)
+      .hadoopJarStep(hadoopJarStep)
+      .build()
   }
 
   private[this] val instances: JobFlowInstancesConfig = {
