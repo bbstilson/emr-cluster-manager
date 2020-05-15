@@ -31,7 +31,6 @@ object SpawnCluster {
   }
 
   def run(config: Config): Unit = {
-    println(config)
-    // new ClusterManager(config).runAndWait()
+    new ClusterManager(config).runAndWait()
   }
 }
