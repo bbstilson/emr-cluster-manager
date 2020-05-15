@@ -9,10 +9,6 @@ object SpawnCluster {
 
   def main(args: Array[String]): Unit = {
     val config = ConfigSource.default.loadOrThrow[Config]
-    run(config)
-  }
-
-  def run(config: Config): Unit = {
     new ClusterManager(config).runAndWait()
   }
 }
